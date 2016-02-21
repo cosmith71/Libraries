@@ -20,7 +20,7 @@
   */
 
 #include "Globals.h"
-#include "Math.h"
+#include "math.h"
 
 byte intlength(int intin)
 {
@@ -176,6 +176,42 @@ int PWMSmoothRampHighRes(byte startHour, byte startMinute, byte endHour, byte en
     }
     return startPWMint + (int)(pwmDelta*((1.0+(cos(radians(smoothPhase))))/2.0));
 
+  }
+}
+
+int PWMSmoothRampHighestRes(byte startHour, byte startMinute, byte endHour, byte endMinute, int startPWMint, int endPWMint, byte slopeLength, int oldValue)
+{
+  LightsOverride=true;
+  int current_hour = hour();
+  long current_millis = millis();
+  long start = NumMins(startHour, startMinute)*600L;
+  long end = NumMins(endHour, endMinute)*600L;
+  long slopeLengthTenthSecs = slopeLength*600L;
+
+  if (start > end) // Start is greater than End so it is over midnight
+  {
+    if (current_hour < endHour) start -= 1440L*600L; // past midnight
+    if (current_hour >= startHour) end += 1440L*600L; // before midnight
+  }
+  long current = NumMins(current_hour, minute())*600L + second()*10L + (current_millis%1000 - current_millis%100)/100L;
+  if (slopeLengthTenthSecs > ((end-start)/2) ) slopeLengthTenthSecs = (end-start)/2; // don't allow a slope length greater than half the total period
+  if (current <= start || current >= end) 
+    return oldValue; // it's before the start or after the end, return the default
+  else
+  { // do the slope calculation
+    int pwmDelta = endPWMint - startPWMint;
+    float smoothPhase;
+    if ((current > (start + slopeLengthTenthSecs)) && (current < (end - slopeLengthTenthSecs))) 
+      return endPWMint; // if it's in the middle of the slope, return the high level
+    else if ((current - start) < slopeLengthTenthSecs) 
+    {  // it's in the beginning slope up
+      smoothPhase = (((float)(current-start)/(float)slopeLengthTenthSecs)*180.0) + 180.0;
+    }
+    else if ((end - current) < slopeLengthTenthSecs)
+    { // it's in the end slope down
+      smoothPhase = (((float)(end-current)/(float)slopeLengthTenthSecs)*180.0) + 180.0;
+    }
+    return startPWMint + (int)(pwmDelta*((1.0+(cos(radians(smoothPhase))))/2.0));
   }
 }
 
@@ -489,7 +525,7 @@ int alphaBlend(int fgcolor, int bgcolor, byte a)
 	return RGB565(r,g,b);
 }
 
-#if defined RA_TOUCH || defined RA_TOUCHDISPLAY || defined RA_EVOLUTION
+#if defined RA_TOUCH || defined RA_TOUCHDISPLAY || defined RA_EVOLUTION || defined RA_STAR
 /*********************************************/
 // These read data from the SD card file and convert them to big endian 
 // (the data is stored in little endian format!)
@@ -905,12 +941,19 @@ byte ElseMode( byte midPoint, byte offset, boolean waveSync )
   }
   if (waveSync)
   {
-    return newSpeed;
+    return constrain(newSpeed,0,100);
   }
   else
   {
-    return antiSpeed;
+    return constrain(antiSpeed,0,100);
   }
+}
+
+const char* ip_to_str(const uint8_t* ipAddr)
+{
+  static char buf[16];
+  sprintf(buf, "%d.%d.%d.%d\0", ipAddr[0], ipAddr[1], ipAddr[2], ipAddr[3]);
+  return buf;
 }
 
 // for pure virtual functions

@@ -22,7 +22,7 @@
 #ifndef	__REEFANGEL_H__
 #define __REEFANGEL_H__
 
-#define ReefAngel_Version "1.1.1"
+#define ReefAngel_Version "1.1.3"
 
 #include <Globals.h>
 #include <InternalEEPROM.h>  // NOTE read/write internal memory
@@ -43,7 +43,7 @@
 #include <DCPump.h>
 #endif  // DCPUMPCONTROL
 #include <DS1307RTC.h>
-#if defined wifi || defined RA_STAR
+#if defined wifi
 #include <RA_Wifi.h>
 #endif  // wifi
 #if defined ORPEXPANSION
@@ -93,8 +93,12 @@ public:
 	byte Board;
 	int PHMin,PHMax;
 	ParamsStruct Params;
+	ParamsStruct OldParams;
+	byte OldTempRelay, OldDaylight, OldActinic;
 	byte AlertFlags,StatusFlags;
 	bool BusLocked;
+	unsigned long LastFeedingMode;
+	unsigned long LastWaterChangeMode;
 
 	ReefAngelClass();
 
@@ -204,6 +208,7 @@ public:
 #endif
 	byte EM,EM1;
 	byte REM;
+	byte CEM;
 
 	/*
 	EM Bits
@@ -269,6 +274,10 @@ public:
 	void CheckDrawGraph();
 	void CheckFeedingDrawing();
 	void CheckWaterChangeDrawing();
+	void Reboot();
+#ifdef RANET
+	void RANetTrigger(byte TriggerValue);
+#endif // RANET
 #ifdef DCPUMPCONTROL
 	void SetDCPumpChannels(byte SyncSpeed,byte AntiSyncSpeed);
 #endif //DCPUMPCONTROL
@@ -331,6 +340,7 @@ public:
 	void LeakCheck();
 	void LeakClear();
 	boolean isLeak();
+	byte LeakValue;
 #endif  // LEAKDETECTOREXPANSION
 
 	boolean isATOTimeOut();
@@ -338,8 +348,14 @@ public:
 	
 	void StandardLights(byte LightsRelay, byte OnHour, byte OnMinute, byte OffHour, byte OffMinute);
 	void MHLights(byte LightsRelay, byte OnHour, byte OnMinute, byte OffHour, byte OffMinute, byte MHDelay);
+	void StandardHeater(byte Probe, byte HeaterRelay, int LowTemp, int HighTemp);
 	void StandardHeater(byte HeaterRelay, int LowTemp, int HighTemp);
+	void StandardHeater2(byte HeaterRelay, int LowTemp, int HighTemp);
+	void StandardHeater3(byte HeaterRelay, int LowTemp, int HighTemp);
+	void StandardFan(byte Probe, byte FanRelay, int LowTemp, int HighTemp);
 	void StandardFan(byte FanRelay, int LowTemp, int HighTemp);
+	void StandardFan2(byte FanRelay, int LowTemp, int HighTemp);
+	void StandardFan3(byte FanRelay, int LowTemp, int HighTemp);
 	void CO2Control(byte CO2Relay, int LowPH, int HighPH);
 	void CO2Control(byte CO2Relay, int LowPH, int HighPH, bool useExp);
 	void PHControl(byte PHControlRelay, int LowPH, int HighPH);
@@ -404,7 +420,8 @@ public:
 	void Portal(char *username, char *key);
 	void DDNS(char *subdomain);
 #endif
-
+	void CheckOverride(int option);
+	void DimmingOverride(int weboption, int weboption2 );
 private:
 	time_t menutimeout;
 	byte taddr;
